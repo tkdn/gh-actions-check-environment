@@ -21,4 +21,4 @@ jobs:
     name: Cancel pending deploy run
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Closed PR #${{ github.event.pull_request.number }}; any in-progress deploy run for this PR has been cancelled by the shared concurrency group."
+      - run: echo "Closed PR number ${{ github.event.pull_request.number }}; any in-progress deploy run for this PR has been cancelled by the shared concurrency group."
