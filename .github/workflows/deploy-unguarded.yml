@@ -1,0 +1,22 @@
+name: Deploy (unguarded)
+
+# For comparison: reproduces the behavior of referencing an undefined stage
+# without any prior verification. `preview` is not pre-created as an
+# Environment in this repository; running this workflow confirms that it
+# gets auto-created without any protection rules.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+
+jobs:
+  deploy:
+    name: Deploy
+    strategy:
+      fail-fast: false
+      matrix:
+        stage:
+          - preview
+    uses: ./.github/workflows/deploy-stage-unguarded.yml
+    with:
+      stage: ${{ matrix.stage }}

@@ -1,0 +1,32 @@
+name: Deploy stage (unguarded)
+
+# For comparison: a reusable workflow that performs no prior verification.
+# It references inputs.stage directly as the environment, so passing a stage
+# name that has not been pre-created on GitHub causes an Environment without
+# any protection rules (e.g. required reviewers) to be created implicitly,
+# and apply is reached without any approval.
+on:
+  workflow_call:
+    inputs:
+      stage:
+        description: Name of the Environment to reference
+        required: true
+        type: string
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.stage }}
+    steps:
+      - name: Run plan (dummy)
+        run: echo "plan (dummy) for ${{ inputs.stage }}"
+
+  apply:
+    name: Apply
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.stage }}
+    steps:
+      - name: Run destructive operation (dummy)
+        run: echo "destructive operation executed (dummy) for ${{ inputs.stage }}"

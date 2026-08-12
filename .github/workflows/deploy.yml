@@ -1,0 +1,23 @@
+name: Deploy
+
+# The list of stages is statically enumerated here, and this list is the single
+# source of truth. Whether each stage actually exists as a GitHub Environment is
+# verified by the check-environment job in deploy-stage.yml (reusable workflow).
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+
+jobs:
+  deploy:
+    name: Deploy
+    strategy:
+      fail-fast: false
+      matrix:
+        stage:
+          - development
+          - staging
+          - production
+    uses: ./.github/workflows/deploy-stage.yml
+    with:
+      stage: ${{ matrix.stage }}
