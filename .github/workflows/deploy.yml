@@ -8,6 +8,13 @@ on:
     paths:
       - '.github/workflows/**'
 
+# Scoped per PR so unrelated PRs never cancel each other. A new push to the
+# same PR cancels any run (including one left pending on Required Reviewers
+# approval) still in progress for that PR.
+concurrency:
+  group: deploy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     name: Deploy
