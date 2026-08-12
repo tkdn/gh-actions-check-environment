@@ -1,13 +1,14 @@
 name: Deploy (unguarded)
 
-# For comparison: reproduces the behavior of referencing an undefined stage
-# without any prior verification. `preview` is not pre-created as an
-# Environment in this repository; running this workflow confirms that it
-# gets auto-created without any protection rules.
+# For comparison only — kept as a reference for the original incident, not
+# meant to run automatically. It reproduces the behavior of referencing an
+# undefined stage without any prior verification: `preview` is not
+# pre-created as an Environment in this repository, and running this
+# workflow confirms that GitHub auto-creates it without any protection
+# rules. Triggered only via workflow_dispatch so it never runs as a side
+# effect of opening a PR.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/**'
+  workflow_dispatch:
 
 jobs:
   deploy:

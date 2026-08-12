@@ -67,12 +67,16 @@ by a real Environment.
 |---|---|
 | `.github/workflows/deploy.yml` | Guarded entry point. Statically lists stages in `matrix.stage` and calls `deploy-stage.yml` once per stage. |
 | `.github/workflows/deploy-stage.yml` | Guarded reusable workflow. Runs `check-environment` before `plan`/`apply`; `plan`/`apply` are gated on `needs: check-environment` so an undefined stage never reaches them. |
-| `.github/workflows/deploy-unguarded.yml` | Comparison entry point. Calls `deploy-stage-unguarded.yml` with `preview`, a stage that is intentionally **not** pre-created. |
+| `.github/workflows/deploy-unguarded.yml` | Comparison entry point, kept for reference only. Calls `deploy-stage-unguarded.yml` with `preview`, a stage that is intentionally **not** pre-created. Triggered only via `workflow_dispatch` so it never runs as a side effect of opening a PR. |
 | `.github/workflows/deploy-stage-unguarded.yml` | Comparison reusable workflow. No pre-flight check — `environment: ${{ inputs.stage }}` is referenced directly, reproducing the original incident. |
 
-Both entry points trigger on `pull_request` with `paths: ['.github/workflows/**']`,
-so the reproduction is faithful to the original scenario: a PR that changes a
-workflow file is what exposes the risk, not a manual dispatch.
+The guarded entry point (`deploy.yml`) triggers on `pull_request` with
+`paths: ['.github/workflows/**']`, so the reproduction is faithful to the
+original scenario: a PR that changes a workflow file is what exposes the
+risk, not a manual dispatch. `deploy-unguarded.yml`, by contrast, is
+intentionally *not* wired to `pull_request` — it reproduces an unprotected
+Environment being auto-created, so it must only run when deliberately
+dispatched by hand.
 
 ## How to verify
 
@@ -123,10 +127,15 @@ from being used, before any destructive step runs.**
 
 ### 3. Contrast: unguarded workflow, undefined stage
 
-Open a PR that triggers `deploy-unguarded.yml` (already wired to the
-undefined stage `preview` by default). Expected result: `plan` and `apply`
-both run for `preview` with no approval gate, and GitHub auto-creates the
-`preview` Environment.
+Manually dispatch `deploy-unguarded.yml` (already wired to the undefined
+stage `preview` by default):
+
+```bash
+gh workflow run deploy-unguarded.yml
+```
+
+Expected result: `plan` and `apply` both run for `preview` with no approval
+gate, and GitHub auto-creates the `preview` Environment.
 
 Confirm the auto-created Environment has no protection rules:
 
