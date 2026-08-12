@@ -18,6 +18,7 @@ jobs:
           - development
           - staging
           - production
+          - preview
     uses: ./.github/workflows/deploy-stage.yml
     with:
       stage: ${{ matrix.stage }}
