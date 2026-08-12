@@ -67,8 +67,24 @@ by a real Environment.
 |---|---|
 | `.github/workflows/deploy.yml` | Guarded entry point. Statically lists stages in `matrix.stage` and calls `deploy-stage.yml` once per stage. |
 | `.github/workflows/deploy-stage.yml` | Guarded reusable workflow. Runs `check-environment` before `plan`/`apply`; `plan`/`apply` are gated on `needs: check-environment` so an undefined stage never reaches them. |
+| `.github/workflows/deploy-cancel-on-close.yml` | Cancels any `deploy.yml` run still pending Required Reviewers approval when its PR is closed. See "Concurrency and PR close" below. |
 | `.github/workflows/deploy-unguarded.yml` | Comparison entry point, kept for reference only. Calls `deploy-stage-unguarded.yml` with `preview`, a stage that is intentionally **not** pre-created. Triggered only via `workflow_dispatch` so it never runs as a side effect of opening a PR. |
 | `.github/workflows/deploy-stage-unguarded.yml` | Comparison reusable workflow. No pre-flight check — `environment: ${{ inputs.stage }}` is referenced directly, reproducing the original incident. |
+
+### Concurrency and PR close
+
+`deploy.yml` sets `concurrency: { group: deploy-<PR number>, cancel-in-progress: true }`,
+scoped per PR so unrelated PRs never cancel each other's runs. A new push to
+the same PR cancels any run still in progress for that PR — including one
+left waiting on Required Reviewers approval.
+
+Closing a PR does not by itself cancel its in-progress workflow runs; GitHub
+has no built-in behavior for that. A run left pending on Required Reviewers
+approval (as in scenario 1 below) stays pending indefinitely otherwise.
+`deploy-cancel-on-close.yml` closes that gap: it triggers on
+`pull_request: types: [closed]` and shares the same concurrency group
+(`deploy-<PR number>`), so GitHub cancels the corresponding `deploy.yml` run
+for that PR as soon as this job starts.
 
 The guarded entry point (`deploy.yml`) triggers on `pull_request` with
 `paths: ['.github/workflows/**']`, so the reproduction is faithful to the

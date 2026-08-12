@@ -1,0 +1,24 @@
+name: Deploy cancel on close
+
+# GitHub does not automatically cancel a workflow run just because the PR
+# that triggered it was closed. A run left waiting on Required Reviewers
+# approval (see deploy.yml) stays pending indefinitely otherwise.
+#
+# This workflow shares deploy.yml's concurrency group for the same PR
+# (`deploy-<PR number>`) and uses cancel-in-progress to force GitHub to
+# cancel any in-progress deploy.yml run for that PR as soon as this job
+# starts.
+on:
+  pull_request:
+    types: [closed]
+
+concurrency:
+  group: deploy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  noop:
+    name: Cancel pending deploy run
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Closed PR #${{ github.event.pull_request.number }}; any in-progress deploy run for this PR has been cancelled by the shared concurrency group."
