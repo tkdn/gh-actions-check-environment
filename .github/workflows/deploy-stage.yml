@@ -9,9 +9,9 @@ name: Deploy stage
 # typo or an unintended value in the Environment name written in a workflow
 # can bypass the approval process entirely.
 #
-# The check-environment job verifies that inputs.stage is present in the
-# actual list of Environments returned by the GitHub API, and fails the
-# workflow before plan/apply run if it is not.
+# The check-environment job verifies that inputs.stage exists as a real
+# Environment via the GitHub API, and fails the workflow before plan/apply
+# run if it does not.
 on:
   workflow_call:
     inputs:
@@ -24,16 +24,22 @@ jobs:
   check-environment:
     name: Check environment
     runs-on: ubuntu-latest
+    # "Get an environment" requires the "Actions" repository permission
+    # (read), not just "contents". contents: read alone works on public
+    # repositories, where this endpoint allows public-read access without
+    # the permissions below, but results in a 403 on private/internal
+    # repositories, where that exemption does not apply.
+    # ref. https://docs.github.com/en/rest/deployments/environments#get-an-environment
     permissions:
       contents: read
+      actions: read
     steps:
       - name: Verify stage exists as a GitHub Environment
         env:
           GH_TOKEN: ${{ github.token }}
           STAGE: ${{ inputs.stage }}
         run: |
-          if ! gh api "repos/${{ github.repository }}/environments" --jq '.environments[].name' \
-              | grep -qFx -- "$STAGE"; then
+          if ! gh api "repos/${{ github.repository }}/environments/$STAGE" >/dev/null 2>&1; then
             echo "::error::Environment '$STAGE' is not defined in this repository. Create it before referencing it from a workflow."
             exit 1
           fi
