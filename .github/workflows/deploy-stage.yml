@@ -9,9 +9,10 @@ name: Deploy stage
 # typo or an unintended value in the Environment name written in a workflow
 # can bypass the approval process entirely.
 #
-# The check-environment job verifies that inputs.stage is present in the
-# actual list of Environments returned by the GitHub API, and fails the
-# workflow before plan/apply run if it is not.
+# The check-environment job verifies that inputs.stage exists as a real
+# Environment with at least one protection rule (e.g. required reviewers)
+# via the GitHub API, and fails the workflow before plan/apply run if
+# either condition is not met.
 on:
   workflow_call:
     inputs:
@@ -24,20 +25,31 @@ jobs:
   check-environment:
     name: Check environment
     runs-on: ubuntu-latest
+    # "Get an environment" requires the "Actions" repository permission
+    # (read), not just "contents". contents: read alone works on public
+    # repositories, where this endpoint allows public-read access without
+    # the permissions below, but results in a 403 on private/internal
+    # repositories, where that exemption does not apply. The calling job
+    # (deploy.yml) must also grant at least these permissions: a reusable
+    # workflow can only maintain or reduce permissions relative to its
+    # caller, never elevate them.
+    # ref. https://docs.github.com/en/rest/deployments/environments#get-an-environment
+    # ref. https://docs.github.com/en/actions/using-workflows/reusing-workflows#nesting-reusable-workflows
     permissions:
       contents: read
+      actions: read
     steps:
-      - name: Verify stage exists as a GitHub Environment
+      - name: Verify stage exists as a protected GitHub Environment
         env:
           GH_TOKEN: ${{ github.token }}
           STAGE: ${{ inputs.stage }}
         run: |
-          if ! gh api "repos/${{ github.repository }}/environments" --jq '.environments[].name' \
-              | grep -qFx -- "$STAGE"; then
-            echo "::error::Environment '$STAGE' is not defined in this repository. Create it before referencing it from a workflow."
+          if ! gh api "repos/${{ github.repository }}/environments/$STAGE" \
+              --jq 'if .protection_rules | length == 0 then error end' > /dev/null 2>&1; then
+            echo "::error::Environment '$STAGE' is not defined or has no protection rules. Create it and configure protection rules before referencing it from a workflow."
             exit 1
           fi
-          echo "Environment '$STAGE' is defined."
+          echo "Environment '$STAGE' is defined and has protection rules."
 
   plan:
     name: Plan
